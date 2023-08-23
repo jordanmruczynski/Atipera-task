@@ -1,9 +1,16 @@
 package com.jordanmruczynski.atiperatask.service;
 
+import com.jordanmruczynski.atiperatask.exceptions.types.ResourceNotFoundException;
 import com.jordanmruczynski.atiperatask.model.BranchInfo;
 import com.jordanmruczynski.atiperatask.model.RepositoryInfo;
 import com.jordanmruczynski.atiperatask.model.ResponseModel;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -11,22 +18,34 @@ import java.util.stream.Collectors;
 @Service
 public class GHApiServiceImpl implements GHApiService {
 
-    private final GitHubApiClient gitHubApiClient;
+    private final WebClient webClient;
 
-    public GHApiServiceImpl(GitHubApiClient gitHubApiClient) {
-        this.gitHubApiClient = gitHubApiClient;
+    public GHApiServiceImpl(WebClient webClient) {
+        this.webClient = webClient;
     }
+
+    @Value("${github.api.url}")
+    private String GITHUB_API_URL;
 
     @Override
-    public List<ResponseModel> getUserRepositories(String username) {
-        List<RepositoryInfo> userRepositories = gitHubApiClient.fetchRepositories(username);
-
-        return userRepositories.stream()
-                .map(repositoryInfo -> {
-                    List<BranchInfo> branches = gitHubApiClient.fetchBranches(username, repositoryInfo.name());
-                    return new ResponseModel(repositoryInfo.name(), repositoryInfo.owner().login(), branches);
-                })
-                .collect(Collectors.toList());
-
+    public Flux<ResponseModel> getUserRepositories(String username) {
+        return webClient.get()
+                .uri( GITHUB_API_URL + "/" + username + "/repos")
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> Mono.error(new ResourceNotFoundException("User repositories not found.")))
+                .bodyToFlux(RepositoryInfo.class)
+                .flatMap(repositoryInfo -> getBranchesForRepository(repositoryInfo)
+                        .map(branches -> new ResponseModel(repositoryInfo.name(), repositoryInfo.owner().login(), branches))
+                );
     }
+
+    private Mono<List<BranchInfo>> getBranchesForRepository(RepositoryInfo repositoryInfo) {
+        return webClient.get()
+                .uri(GITHUB_API_URL + "/repos/" + repositoryInfo.owner().login() + "/" + repositoryInfo.name() + "/branches")
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> Mono.error(new ResourceNotFoundException("Branches not found for repository: " + repositoryInfo.name())))
+                .bodyToFlux(BranchInfo.class)
+                .collectList();
+    }
+
 }
