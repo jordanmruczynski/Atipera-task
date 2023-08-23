@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public class GHApiController {
     }
 
     @RequestMapping(path = "{username}", method = RequestMethod.GET, produces = "application/json")
-    public List<ResponseModel> getUserRepositories(@PathVariable("username") String username, @RequestHeader("Accept") String acceptHeader) {
+    public Flux<ResponseModel> getUserRepositories(@PathVariable("username") String username, @RequestHeader("Accept") String acceptHeader) {
         if ("application/xml".equals(acceptHeader)) {
             throw new InvalidAcceptHeaderException("XML format is not supported");
         }
