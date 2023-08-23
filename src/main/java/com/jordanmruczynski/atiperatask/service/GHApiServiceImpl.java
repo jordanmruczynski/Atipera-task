@@ -30,7 +30,7 @@ public class GHApiServiceImpl implements GHApiService {
     @Override
     public Flux<ResponseModel> getUserRepositories(String username) {
         return webClient.get()
-                .uri( GITHUB_API_URL + "/" + username + "/repos")
+                .uri( GITHUB_API_URL + "/users/" + username + "/repos")
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> Mono.error(new ResourceNotFoundException("User repositories not found.")))
                 .bodyToFlux(RepositoryInfo.class)
