@@ -1,7 +1,7 @@
-# Atipera-task
+# GitHub Repositories Scrapper
 A simple application for downloading someones GitHub repositories in a specified format.
 
-**NOTE:** Atipera-task is not an any official API.
+**NOTE:** GitHub Repositories Scrapper is not an any official API.
 
 ## RestAPI (Params and description)
 
